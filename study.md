@@ -19,9 +19,14 @@
 
 ---
 
-## 2주차 — 이벤트 처리 + 폼 + 불변성 심화
+## 2주차 — 이벤트 처리 + 폼 + 라우팅
 
-**개념:** controlled component, 폼 핸들링, 이벤트 핸들러 패턴, 배열/객체 state 업데이트
+**개념:** controlled component, 폼 핸들링, 이벤트 핸들러 패턴, 배열/객체 state 업데이트, React Router
+
+**React Router:**
+
+- `react-router-dom` 설치, BrowserRouter / Routes / Route / Link / useNavigate / useParams
+- 투두리스트를 멀티 페이지로 분리: `/` 메인, `/todo/:id` 상세
 
 **과제:** 1주차 투두리스트에 기능 추가
 
@@ -29,6 +34,7 @@
 - 카테고리 추가: "업무", "개인", "공부" 등 선택 후 카테고리별 필터링
 - 우선순위: 높음/보통/낮음 선택, 우선순위별 정렬
 - 전체/완료/미완료 필터 탭
+- 페이지 분리: 메인(목록) / 상세(개별 투두) / 설정 페이지
 
 **스킬 (6개):**
 
@@ -59,14 +65,25 @@
 
 ## 3주차 — 비동기 + 데이터 페칭 + 저장
 
-**개념:** useEffect 데이터 페칭/cleanup, custom hook (useTodos, useLocalStorage), Promise/async/await
+**개념:** useEffect 데이터 페칭/cleanup, useReducer, custom hook (useTodos, useLocalStorage), Promise/async/await
+
+**useReducer:**
+
+- 투두 상태가 복잡해졌으므로(추가/삭제/수정/토글/필터) useState 여러 개 대신 useReducer로 통합
+- dispatch 패턴 익히기: `dispatch({ type: 'ADD_TODO', payload: { ... } })`
 
 **과제:** 투두리스트 데이터 영속화 + API 연동
 
+- useState → useReducer 리팩토링: 투두 CRUD 액션을 reducer로 통합
 - localStorage 저장/불러오기: 새로고침해도 데이터 유지
 - custom hook 분리: `useLocalStorage(key, initialValue)` 만들어서 재사용
 - mock API 연동: JSONPlaceholder(`https://jsonplaceholder.typicode.com/todos`)에서 초기 데이터 fetch
 - 로딩/에러 상태 처리: 로딩 스피너, 에러 메시지, 재시도 버튼
+
+**선택:** TanStack Query로 데이터 페칭 업그레이드
+
+- useEffect + fetch 패턴을 먼저 직접 구현한 뒤, TanStack Query로 교체하여 차이 체감
+- `useQuery`, `useMutation`, 자동 캐싱/재요청/로딩 상태 관리
 
 **스킬 (7개):**
 
@@ -99,19 +116,26 @@
 
 ---
 
-## 4주차 — 새 프로젝트 + 컴포지션
+## 4주차 — 새 프로젝트 + 컴포지션 + 상태관리
 
 **개념:** Context API (createContext, use), props drilling 문제, children 패턴
+
+**외부 상태관리 (선택 — Zustand 또는 Jotai 중 택 1):**
+
+- Context로 먼저 구현한 뒤, Zustand/Jotai로 교체하여 차이 체감
+- Zustand: store 기반, 보일러플레이트 적음, Context 없이 전역 상태
+- Jotai: atom 기반, 개별 상태 단위로 구독, 리렌더 최소화
 
 **과제:** 게시판 / Kanban 보드 / 채팅 UI 중 택 1
 
 - 투두보다 컴포넌트 구조가 복잡해서 composition 패턴이 자연스럽게 필요해지는 규모
+- React Router로 멀티 페이지 구성 (2주차 복습)
 - 예시 (Kanban 보드):
   - Board: 여러 Column을 가로로 배치
   - Column: "할 일" / "진행 중" / "완료" 각각의 리스트
   - Card: 개별 태스크, 드래그&드롭 없이 버튼으로 상태 이동
   - Modal: 카드 상세 보기/편집, 열기/닫기
-  - Context로 전체 보드 상태 공유, Column/Card는 context에서 읽기
+  - Context(또는 Zustand/Jotai)로 전체 보드 상태 공유
 
 **스킬 — composition-patterns 전체 (8개):**
 
@@ -156,8 +180,13 @@
 
 - React DevTools Profiler로 리렌더 원인 찾기 → memo/useMemo/useCallback으로 해결
 - 무거운 컴포넌트(Modal, 에디터 등) React.lazy로 분리
+- 라우트 단위 코드 스플리팅: React.lazy + Suspense로 페이지별 번들 분리
 - 검색/필터 입력 시 startTransition으로 non-urgent 업데이트 처리
 - bundle analyzer로 번들 크기 확인, 불필요한 barrel import 제거
+
+**선택:** TanStack Query 캐싱 최적화
+
+- 3주차에서 도입했다면 staleTime, gcTime, 쿼리 무효화 전략 등 심화
 
 **스킬 (12개):**
 
