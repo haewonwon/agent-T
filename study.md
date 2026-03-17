@@ -7,14 +7,14 @@
 
 ---
 
-## 1주차 — React 기초 + 투두 CRUD (완료)
+## 1주차 — React 기초 + 투두 추가, 삭제
 
 **개념:** Virtual DOM, JSX, Component, Props, State, 단방향 흐름, 불변성, Key, useState, useEffect, useRef, React 19 ref, 조건부 렌더링
 
 **과제:** 투두리스트 + 랜덤 유저 API
 
-- TodoInput: 할 일 입력 (글자 수 표시, 20자 제한, Enter/버튼으로 추가)
-- TodoList: 목록 렌더링, 완료 토글(취소선), 삭제
+- TextInput: 할 일 입력 (글자 수 표시, 20자 제한, Enter/버튼으로 추가)
+- TaskList: 목록 렌더링, 완료 토글(취소선), 삭제
 - UserProfile: `https://randomuser.me/api/` 호출하여 사진/이름/이메일 표시, 새로고침
 
 ---
