@@ -1,6 +1,16 @@
-import { createContext, use, useState, useEffect } from 'react';
+import { createContext, use, useReducer, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Task, User, Category, Priority, FilterTab, SortBy } from '../types';
+import { todoReducer } from '../todoReducer';
+import { loadTasksFromStorage, persistTasks } from '../lib/todoStorage';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { parseFilterTab, parseSelectedCategory, parseSortBy } from '../lib/storageParsers';
+import { usePlaceholderTodosSeed } from './usePlaceholderTodosSeed';
+import { useTodoRandomUser } from './useTodoRandomUser';
+
+const LS_FILTER_TAB = 'agentt-filter-tab';
+const LS_SORT_BY = 'agentt-sort-by';
+const LS_SELECTED_CATEGORY = 'agentt-selected-category';
 
 interface TodoContextType {
   tasks: Task[];
@@ -20,13 +30,27 @@ interface TodoContextType {
 
   filteredTasks: Task[];
 
+  isLoadingInitialTodos: boolean;
+  initialTodosError: string | null;
+  retryInitialTodos: () => void;
+
+  placeholderTodosQueryInfo: {
+    status: string;
+    fetchStatus: string;
+    dataUpdatedAt: number;
+    isStale: boolean;
+    staleTimeMs: number;
+  } | null;
+
   user: User | null;
   isLoadingUser: boolean;
+  userError: string | null;
   refreshUser: () => void;
 }
 
 const TodoContext = createContext<TodoContextType | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components -- useTodo는 TodoProvider와 쌍
 export function useTodo() {
   const ctx = use(TodoContext);
   if (!ctx) throw new Error('useTodo must be used within TodoProvider');
@@ -34,76 +58,69 @@ export function useTodo() {
 }
 
 export function TodoProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(false);
-  const [filterTab, setFilterTab] = useState<FilterTab>('전체');
-  const [selectedCategory, setSelectedCategory] = useState<Category | '전체'>('전체');
-  const [sortBy, setSortBy] = useState<SortBy>('created');
+  const [tasks, dispatch] = useReducer(todoReducer, [], () => loadTasksFromStorage());
+  const [shouldFetchPlaceholder] = useState(() => loadTasksFromStorage().length === 0);
 
-  const fetchRandomUser = async () => {
-    try {
-      setIsLoadingUser(true);
-      const response = await fetch('https://randomuser.me/api/');
-      const data = await response.json();
-      const result = data.results[0];
-      setUser({
-        name: `${result.name.last}${result.name.first}`,
-        email: result.email,
-        picture: result.picture.large,
-      });
-    } catch (err) {
-      console.error('유저 정보를 불러오지 못했습니다.', err);
-    } finally {
-      setIsLoadingUser(false);
-    }
-  };
+  const [filterTab, setFilterTab] = useLocalStorage<FilterTab>(
+    LS_FILTER_TAB,
+    '전체',
+    parseFilterTab
+  );
+  const [sortBy, setSortBy] = useLocalStorage<SortBy>(LS_SORT_BY, 'created', parseSortBy);
+  const [selectedCategory, setSelectedCategory] = useLocalStorage<Category | '전체'>(
+    LS_SELECTED_CATEGORY,
+    '전체',
+    parseSelectedCategory
+  );
+
+  const {
+    isLoadingInitialTodos,
+    initialTodosError,
+    retryInitialTodos,
+    placeholderTodosQueryInfo,
+  } = usePlaceholderTodosSeed(dispatch, tasks.length, shouldFetchPlaceholder);
+
+  const { user, isLoadingUser, userError, refreshUser } = useTodoRandomUser();
 
   useEffect(() => {
-    fetchRandomUser();
-  }, []);
+    persistTasks(tasks);
+  }, [tasks]);
 
   const addTask = (text: string, category: Category, priority: Priority) => {
-    setTasks((prev) => [
-      ...prev,
-      { id: Date.now(), text, done: false, category, priority },
-    ]);
+    dispatch({ type: 'ADD', payload: { text, category, priority } });
   };
 
   const editTask = (id: number, newText: string, newCategory: Category, newPriority: Priority) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? { ...task, text: newText, category: newCategory, priority: newPriority }
-          : task
-      )
-    );
+    dispatch({
+      type: 'EDIT',
+      payload: { id, text: newText, category: newCategory, priority: newPriority },
+    });
   };
 
   const toggleTask = (id: number) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, done: !task.done } : task))
-    );
+    dispatch({ type: 'TOGGLE', payload: { id } });
   };
 
   const deleteTask = (id: number) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+    dispatch({ type: 'DELETE', payload: { id } });
   };
 
-  const filteredTasks = tasks
-    .filter((task) => {
-      if (filterTab === '완료') return task.done;
-      if (filterTab === '미완료') return !task.done;
-      return true;
-    })
-    .filter((task) => {
-      if (selectedCategory === '전체') return true;
-      return task.category === selectedCategory;
-    })
-    .toSorted((a, b) => {
-      if (sortBy === 'priority') return a.priority - b.priority;
-      return a.id - b.id;
-    });
+  const filteredTasks = useMemo(() => {
+    return tasks
+      .filter((task) => {
+        if (filterTab === '완료') return task.done;
+        if (filterTab === '미완료') return !task.done;
+        return true;
+      })
+      .filter((task) => {
+        if (selectedCategory === '전체') return true;
+        return task.category === selectedCategory;
+      })
+      .toSorted((a, b) => {
+        if (sortBy === 'priority') return a.priority - b.priority;
+        return a.id - b.id;
+      });
+  }, [tasks, filterTab, selectedCategory, sortBy]);
 
   return (
     <TodoContext.Provider
@@ -120,9 +137,14 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         sortBy,
         setSortBy,
         filteredTasks,
+        isLoadingInitialTodos,
+        initialTodosError,
+        retryInitialTodos,
+        placeholderTodosQueryInfo,
         user,
         isLoadingUser,
-        refreshUser: fetchRandomUser,
+        userError,
+        refreshUser,
       }}
     >
       {children}

@@ -3,14 +3,19 @@ import { useTodo } from '../context/TodoContext';
 import UserProfile from '../components/UserProfile';
 
 function SettingsPage() {
-  const { user, isLoadingUser, refreshUser } = useTodo();
+  const { user, isLoadingUser, userError, refreshUser } = useTodo();
   const navigate = useNavigate();
 
   return (
     <div>
       <h2>설정</h2>
 
-      <UserProfile user={user} isLoadingUser={isLoadingUser} onRefreshUser={refreshUser} />
+      <UserProfile
+        user={user}
+        isLoadingUser={isLoadingUser}
+        userError={userError}
+        onRefreshUser={refreshUser}
+      />
 
       <div style={{ marginTop: '24px' }}>
         <button onClick={() => navigate('/')} style={{ padding: '8px 16px' }}>
